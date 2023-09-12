@@ -45,7 +45,7 @@ const activeFilterOptions = [
 export const Categories = () => {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const activeFilter = searchParams.get("filter[active]") !== null ? searchParams.get("filter[active]")! : "all"
+  const activeFilter = searchParams.get("filter[active]") !== null ? "all" : searchParams.get("filter[active]") === "true" ? "active" : "disabled"
   const page = searchParams.get("page") !== null ? Number(searchParams.get("page")!) : 1
   const pageSize = searchParams.get("limit") !== null ? Number(searchParams.get("limit")!) : 10
   const searchValue = searchParams.get("search") !== null ? searchParams.get("search")! : ""
@@ -61,14 +61,9 @@ export const Categories = () => {
   const showSizeChange = (_: number, pageSize: number) => {
     updateQueryParams("limit", pageSize.toString(), searchParams, setSearchParams)
   }
-  const onSearch = (values: unknown) => {
+  const onSearch = (values: any) => {
     console.log(values)
-    // if (value === "") {
-    //   updateQueryParams("search", null, searchParams, setSearchParams)
-    //   return
-    // }
-    //
-    // updateQueryParams("search", value, searchParams, setSearchParams)
+    updateQueryParams("filter[active]", values.activeFilter === "all" ? null : values.activeFilter === "active" ? "true" : "false", searchParams, setSearchParams)
   }
   const toggleAdvancedSearch = (checked: boolean) => {
     updateQueryParams("advancedSearch", checked ? "true" : null, searchParams, setSearchParams)
@@ -83,7 +78,9 @@ export const Categories = () => {
           onFinish={onSearch}
           initialValues={{
             name: searchValue,
-            activeFilter: activeFilter
+            activeFilter: activeFilter,
+            _id: "",
+            code: ""
           }}
         >
           <Row gutter={32}>
@@ -95,7 +92,7 @@ export const Categories = () => {
               </Form.Item>
             </Col>
 
-            <Col span={6}>
+            <Col span={8}>
               <Form.Item label="Активность" name="activeFilter">
                 <Select
                   // className="w-full"
@@ -107,12 +104,13 @@ export const Categories = () => {
 
             <Col
               className="flex items-center"
-              span={6}
+              span={4}
             >
               <Form.Item
-                className="m-0"
+                className="m-0 w-full"
               >
                 <Button
+                  className="w-full"
                   type="primary"
                   htmlType="submit"
                 >
@@ -125,16 +123,17 @@ export const Categories = () => {
           {
             advancedSearch &&
             columns.map(({value, label}) => {
-              return value !== "name" && value !== "active" ? (
+              return value === "_id"
+              || value === "code" ? (
                 <Row gutter={32} key={value}>
                   <Col span={12}>
                     <Form.Item
                       label={label}
-                      name="_id"
+                      name={value}
                     >
                       <Input
                         // className="w-2/3"
-                        placeholder="Введите id категории для поиска"
+                        placeholder={`Введите ${label} категории для поиска`}
                       />
                     </Form.Item>
                   </Col>
