@@ -1,7 +1,6 @@
-import {Input, Pagination, Select} from "antd";
-import {useState} from "react";
+import {Button, Col, Form, Input, Pagination, Row, Select, Switch} from "antd";
 import {useSearchParams} from "react-router-dom";
-import {SearchProps} from "antd/es/input";
+import {updateQueryParams} from "../utils/utils.ts";
 
 const columns = [
   {
@@ -44,73 +43,110 @@ const activeFilterOptions = [
 ]
 
 export const Categories = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [activeFilter, setActiveFilter] = useState(searchParams.get("filter[active]") !== null ? searchParams.get("filter[active]")! : "all")
-  const [page, setPage] = useState(searchParams.get("page") !== null ? Number(searchParams.get("page")!) : 1)
-  const [pageSize, setPageSize] = useState(searchParams.get("limit") !== null ? Number(searchParams.get("limit")!) : 10)
-  const [searchValue, setSearchValue] = useState(searchParams.get("search") !== null ? searchParams.get("search")! : "")
-  const [searchBy, setSearchBy] = useState("_id")
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const activeFilter = searchParams.get("filter[active]") !== null ? searchParams.get("filter[active]")! : "all"
+  const page = searchParams.get("page") !== null ? Number(searchParams.get("page")!) : 1
+  const pageSize = searchParams.get("limit") !== null ? Number(searchParams.get("limit")!) : 10
+  const searchValue = searchParams.get("search") !== null ? searchParams.get("search")! : ""
+  const advancedSearch = searchParams.get("advancedSearch") !== null ? JSON.parse(searchParams.get("advancedSearch")!) : false
   const total = 214
 
-  const activeFilterChange = (value: string) => {
-    setActiveFilter(value)
-    searchParams.set("filter[active]", value)
-    setSearchParams(searchParams)
-  }
+  // const activeFilterChange = (value: string) => {
+  //   updateQueryParams("filter[active]", value, searchParams, setSearchParams)
+  // }
   const pageChange = (page: number) => {
-    setPage(page)
-    searchParams.set("page", page.toString())
-    setSearchParams(searchParams)
+    updateQueryParams("page", page.toString(), searchParams, setSearchParams)
   }
   const showSizeChange = (_: number, pageSize: number) => {
-    setPageSize(pageSize)
-    searchParams.set("limit", pageSize.toString())
-    setSearchParams(searchParams)
+    updateQueryParams("limit", pageSize.toString(), searchParams, setSearchParams)
   }
-  // const onSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
-  //   const value = e.currentTarget.value
-  //   setSearchValue(value)
-  //   searchParams.set("search", value)
-  //   setSearchParams(searchParams)
-  // }
-  const onSearch: SearchProps['onSearch'] = (value, _e, _info) => {
-    setSearchValue(value)
-
-    if (value === "") {
-      searchParams.delete("search")
-      setSearchParams(searchParams)
-      return
-    }
-
-    searchParams.set("search", value)
-    setSearchParams(searchParams)
+  const onSearch = (values: unknown) => {
+    console.log(values)
+    // if (value === "") {
+    //   updateQueryParams("search", null, searchParams, setSearchParams)
+    //   return
+    // }
+    //
+    // updateQueryParams("search", value, searchParams, setSearchParams)
   }
-  const searchByChange = (value: string) => {
-    setSearchBy(value)
-    console.log(value)
+  const toggleAdvancedSearch = (checked: boolean) => {
+    updateQueryParams("advancedSearch", checked ? "true" : null, searchParams, setSearchParams)
   }
 
   return (
-    <div className="h-screen flex flex-col justify-center items-center bg-zinc-200 gap-8">
-      <div className="flex gap-4 w-1/2">
-        <Input.Search
-          defaultValue={searchValue}
-          // onChange={onSearchChange}
-          onSearch={onSearch}
-        />
-        <Select
-          // className="w-full"
-          defaultValue={searchBy}
-          onChange={searchByChange}
-          options={columns.filter(c => c.value !== "active")}
-        />
-        <Select
-          // className="w-full"
-          defaultValue={activeFilter}
-          onChange={activeFilterChange}
-          options={activeFilterOptions}
-        />
+    <div className="py-8 min-h-screen flex flex-col justify-center items-center bg-zinc-200 gap-8">
+      <div className="w-1/2">
+        <Form
+          className="w-full"
+          layout="vertical"
+          onFinish={onSearch}
+          initialValues={{
+            name: searchValue,
+            activeFilter: activeFilter
+          }}
+        >
+          <Row gutter={32}>
+            <Col span={12}>
+              <Form.Item label="Название" name="name">
+                <Input
+                  placeholder="Введите название категории для поиска"
+                />
+              </Form.Item>
+            </Col>
+
+            <Col span={6}>
+              <Form.Item label="Активность" name="activeFilter">
+                <Select
+                  // className="w-full"
+                  // onChange={activeFilterChange}
+                  options={activeFilterOptions}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col
+              className="flex items-center"
+              span={6}
+            >
+              <Form.Item
+                className="m-0"
+              >
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                >
+                  Поиск
+                </Button>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {
+            advancedSearch &&
+            columns.map(({value, label}) => {
+              return value !== "name" && value !== "active" ? (
+                <Row gutter={32} key={value}>
+                  <Col span={12}>
+                    <Form.Item
+                      label={label}
+                      name="_id"
+                    >
+                      <Input
+                        // className="w-2/3"
+                        placeholder="Введите id категории для поиска"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              ) : null
+            })
+          }
+
+
+        </Form>
       </div>
+      <Switch defaultChecked={advancedSearch} onChange={toggleAdvancedSearch}/>
       <Pagination
         total={total}
         showSizeChanger
