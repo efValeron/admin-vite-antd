@@ -12,12 +12,12 @@ export const generateGetUrl = (url: string, type: string) => {
   const urlObj = new URL(url);
   const searchParams = urlObj.searchParams;
 
-  if(searchParams.has('advancedSearch')) {
+  if (searchParams.has('advancedSearch')) {
     searchParams.delete('advancedSearch');
   }
 
   // Добавляем limit и page если параметров нет
-  if(!searchParams.keys().next().value){
+  if (!searchParams.keys().next().value) {
     searchParams.append('limit', '10');
     searchParams.append('page', '1');
   }
