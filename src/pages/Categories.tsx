@@ -1,6 +1,6 @@
-import {Button, Col, Form, Input, Pagination, Row, Select, Space, Switch, Table} from "antd";
-import {useSearchParams} from "react-router-dom";
-import {generateGetUrl, getCategories, updateQueryParams} from "../utils/utils.ts";
+import {Button, Col, Form, Input, notification, Pagination, Row, Select, Space, Switch, Table, TableProps} from "antd";
+import {NavLink, useSearchParams} from "react-router-dom";
+import {generateGetListUrl, getData, updateQueryParams} from "../utils/utils.ts";
 import {useEffect, useMemo, useState} from "react";
 
 const activeFilterOptions = [
@@ -9,7 +9,7 @@ const activeFilterOptions = [
   {value: 'disabled', label: 'Неактивные'},
 ]
 
-type CategoriesType = {
+export type CategoryType = {
   _id: string
   code: string
   sort: number
@@ -20,13 +20,14 @@ type CategoriesType = {
   questionCount: number
 }
 
-type DataType = {
-  categories: CategoriesType[]
+export type DataType = {
+  data: CategoryType[]
   total: number
 }
 
 export const Categories = () => {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [api, contextHolder] = notification.useNotification()
 
   const activeFilter = searchParams.get("filter[active]") === null ? "all" : searchParams.get("filter[active]") === "true" ? "active" : "disabled"
   const page = searchParams.get("page") !== null ? Number(searchParams.get("page")) : 1
@@ -36,8 +37,9 @@ export const Categories = () => {
   const searchCode = searchParams.get("filter[code]") !== null ? searchParams.get("filter[code]") : ""
   const sortBy = searchParams.get("by")
   const sortOrder = searchParams.get("order") === null ? 1 : Number(searchParams.get("order"))
-  let [total, setTotal] = useState(0)
-  let [categories, setCategories] = useState([])
+
+  const [total, setTotal] = useState(0)
+  const [categories, setCategories] = useState<CategoryType[] | undefined>(undefined)
   const [loading, setLoading] = useState(false)
 
   // const activeFilterChange = (value: string) => {
@@ -64,20 +66,25 @@ export const Categories = () => {
       updateQueryParams("filter[code]", null, searchParams, setSearchParams)
     }
   }
-  const onSort = (_: any, __:any, sorter: { field: string, order: string | undefined }) => {
-    console.log('sort', sorter.field, "by", sorter.order)
+  const onSort: TableProps<CategoryType>['onChange'] = (_, __, sorter) => {
     updateQueryParams("by", sorter.order === undefined ? null : sorter.field, searchParams, setSearchParams)
     updateQueryParams("order", sorter.order === undefined ? null : sorter.order === "ascend" ? "1" : "-1", searchParams, setSearchParams)
   };
 
   useEffect(() => {
     setLoading(true)
-    const url = generateGetUrl(window.location.href, "category")
-    console.log("fetching", url)
-    getCategories(url)
-      .then(response => {
+    const url = generateGetListUrl(window.location.href, "category")
+    getData(url)
+      .then((response: DataType) => {
         setTotal(response.total)
         setCategories(response.data)
+        setLoading(false)
+      })
+      .catch((error: Error) => {
+        api["error"]({
+          message: "Что-то пошло не так!",
+          description: "Попробуйте еще раз или повторите попытку позже." + error.message,
+        });
         setLoading(false)
       })
   }, [searchParams]);
@@ -160,9 +167,8 @@ export const Categories = () => {
       dataIndex: 'action',
       title: 'Действия',
       key: 'action',
-      render: () => (
-        <Space size="middle">
-          <a>Редактировать</a>
+      render: (_: any, row: CategoryType) => (<Space size="middle">
+          <NavLink to={row._id}>Редактировать</NavLink>
           <a>Удалить</a>
         </Space>
       ),
@@ -257,19 +263,21 @@ export const Categories = () => {
   </>, [advancedSearch, searchName, searchCode, activeFilter, advancedSearch])
 
   return (
-    <div className="py-8 min-h-screen flex flex-col items-center bg-zinc-200 gap-8">
-      {search}
+    <>
+      {contextHolder}
+      <div className="py-8 min-h-screen flex flex-col items-center bg-zinc-200 gap-8">
+        {search}
 
-      <Table
-        loading={loading}
-        className="w-full px-32"
-        dataSource={categories}
-        columns={columns}
-        pagination={false}
-        footer={() => pagination}
-        onChange={onSort}
-
-      />
-    </div>
+        <Table
+          loading={loading}
+          className="w-full px-32"
+          dataSource={categories}
+          columns={columns}
+          pagination={false}
+          footer={() => pagination}
+          onChange={onSort}
+        />
+      </div>
+    </>
   )
 }
