@@ -1,13 +1,13 @@
 import {useNavigate, useParams} from "react-router-dom";
 import {useEffect, useState} from "react";
-import {server_name} from "../axiosGlobals.ts";
+import {server_name} from "../../axiosGlobals.ts";
 import {Button, Form, Input, InputNumber, notification, Spin, Switch} from "antd";
-import {getData, updateData} from "../utils/utils.ts";
+import {addData, getData, updateData} from "../../utils/utils.ts";
 import {CategoryType} from "./Categories.tsx";
 import {ArrowLeftOutlined} from "@ant-design/icons";
-import {AxiosResponse} from "axios";
+import {AxiosError, AxiosResponse} from "axios";
 
-export const CategoryEdit = () => {
+export const CategoryEdit = ({add}: {add?: boolean}) => {
   const {id} = useParams()
   const [api, contextHolder] = notification.useNotification()
   const [form] = Form.useForm()
@@ -16,24 +16,42 @@ export const CategoryEdit = () => {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<CategoryType | undefined>(undefined)
 
-  const onFinish = (values: any) => {
+  const onUpdateFinish = (values: any) => {
     const url = `${server_name}/api/category/${id}/update`
     updateData(url, {...data, ...values})
-      .then((response: AxiosResponse) => {
+      .then((response: AxiosError | AxiosResponse) => {
         if (response.status !== 200) return Promise.reject(response)
         navigate(-1)
         setLoading(false)
       })
-      .catch((response: AxiosResponse) => {
+      .catch((error: AxiosError) => {
         api["error"]({
-          message: "Что-то пошло не так!",
-          description: `Код ответа: ${response.status}`,
+          message: "Что-то пошло не так! Повторите попытку позже.",
+          description: error.message,
+        });
+        setLoading(false)
+      })
+  }
+
+  const onAddFinish = (values: any) => {
+    const url = `${server_name}/api/category/`
+    addData(url, values)
+      .then((response: AxiosError | AxiosResponse) => {
+        if (response.status !== 200) return Promise.reject(response)
+        navigate(-1)
+        setLoading(false)
+      })
+      .catch((error: AxiosError) => {
+        api["error"]({
+          message: "Что-то пошло не так! Повторите попытку позже.",
+          description: error.message,
         });
         setLoading(false)
       })
   }
 
   useEffect(() => {
+    if (!id) return
     setLoading(true)
     const url = `${server_name}/api/category/${id}`
     getData(url)
@@ -44,20 +62,23 @@ export const CategoryEdit = () => {
       })
       .catch((error: Error) => {
         api["error"]({
-          message: "Что-то пошло не так!",
-          description: "Попробуйте еще раз или повторите попытку позже." + error.message,
+          message: "Что-то пошло не так! Повторите попытку позже.",
+          description: error.message,
         });
         setLoading(false)
       })
   }, []);
 
   const formItems = <>
-    <Form.Item
+    {
+      !add &&
+      <Form.Item
       label="ID"
       name="_id"
     >
       <Input readOnly/>
     </Form.Item>
+    }
 
     <Form.Item
       label="Название"
@@ -116,7 +137,7 @@ export const CategoryEdit = () => {
             form={form}
             className="m-12 px-16 py-4 bg-zinc-100 rounded-lg"
             name="basic"
-            onFinish={onFinish}
+            onFinish={add ? onAddFinish : onUpdateFinish}
             autoComplete="off"
             layout="vertical"
           >
