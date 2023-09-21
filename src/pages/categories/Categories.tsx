@@ -1,7 +1,22 @@
-import {Button, Col, Form, Input, notification, Pagination, Row, Select, Space, Switch, Table, TableProps} from "antd";
+import {
+  Button,
+  Col,
+  Form,
+  Input,
+  notification,
+  Pagination,
+  Row,
+  Select,
+  Switch,
+  Table,
+  TableProps
+} from "antd";
 import {NavLink, useSearchParams} from "react-router-dom";
-import {generateGetListUrl, getData, updateQueryParams} from "../utils/utils.ts";
+import {generateGetListUrl, getData, updateQueryParams} from "../../utils/utils.ts";
 import {useEffect, useMemo, useState} from "react";
+import {CategoryActions} from "./components/CategoryActions.tsx";
+import {AxiosError} from "axios";
+import {ColumnGroupType, ColumnType} from "antd/es/table";
 
 const activeFilterOptions = [
   {value: 'all', label: 'Все'},
@@ -42,9 +57,23 @@ export const Categories = () => {
   const [categories, setCategories] = useState<CategoryType[] | undefined>(undefined)
   const [loading, setLoading] = useState(false)
 
-  // const activeFilterChange = (value: string) => {
-  //   updateQueryParams("filter[active]", value, searchParams, setSearchParams)
-  // }
+  const fetchData = () => {
+    setLoading(true)
+    const url = generateGetListUrl(window.location.href, "category")
+    getData(url)
+      .then((response: DataType) => {
+        setTotal(response.total)
+        setCategories(response.data)
+        setLoading(false)
+      })
+      .catch((error: AxiosError) => {
+        api["error"]({
+          message: "Что-то пошло не так!",
+          description: "Попробуйте еще раз или повторите попытку позже. " + error.message,
+        });
+        setLoading(false)
+      })
+  }
   const pageChange = (page: number) => {
     updateQueryParams("page", page.toString(), searchParams, setSearchParams)
   }
@@ -67,39 +96,23 @@ export const Categories = () => {
     }
   }
   const onSort: TableProps<CategoryType>['onChange'] = (_, __, sorter) => {
+    // @ts-ignore
     updateQueryParams("by", sorter.order === undefined ? null : sorter.field, searchParams, setSearchParams)
+    // @ts-ignore
     updateQueryParams("order", sorter.order === undefined ? null : sorter.order === "ascend" ? "1" : "-1", searchParams, setSearchParams)
   };
 
   useEffect(() => {
-    setLoading(true)
-    const url = generateGetListUrl(window.location.href, "category")
-    getData(url)
-      .then((response: DataType) => {
-        setTotal(response.total)
-        setCategories(response.data)
-        setLoading(false)
-      })
-      .catch((error: Error) => {
-        api["error"]({
-          message: "Что-то пошло не так!",
-          description: "Попробуйте еще раз или повторите попытку позже." + error.message,
-        });
-        setLoading(false)
-      })
-  }, [searchParams]);
+    fetchData()
+  }, [activeFilter, page, pageSize, searchName, searchCode, sortBy, sortOrder])
 
-  const columns = [
+  const columns: (ColumnType<CategoryType> | ColumnGroupType<CategoryType>)[] = [
     {
-      value: '_id',
-      label: 'ID',
       dataIndex: '_id',
       key: '_id',
       title: 'ID',
     },
     {
-      value: 'code',
-      label: 'Код',
       dataIndex: 'code',
       key: 'code',
       title: 'Код',
@@ -107,8 +120,6 @@ export const Categories = () => {
       defaultSortOrder: sortBy === "code" ? sortOrder === 1 ? "ascend" : "descend" : null,
     },
     {
-      value: 'sort',
-      label: 'Sort',
       dataIndex: 'sort',
       key: 'sort',
       title: 'Sort',
@@ -116,8 +127,6 @@ export const Categories = () => {
       defaultSortOrder: sortBy === "sort" ? sortOrder === 1 ? "ascend" : "descend" : null,
     },
     {
-      value: 'name',
-      label: 'Название',
       dataIndex: 'name',
       key: 'name',
       title: 'Название',
@@ -125,15 +134,11 @@ export const Categories = () => {
       defaultSortOrder: sortBy === "name" ? sortOrder === 1 ? "ascend" : "descend" : null,
     },
     {
-      value: 'description',
-      label: 'Описание',
       dataIndex: 'description',
       key: 'description',
       title: 'Описание',
     },
     {
-      value: 'active',
-      label: 'Статус',
       dataIndex: 'active',
       key: 'active',
       title: 'Статус',
@@ -144,8 +149,6 @@ export const Categories = () => {
       defaultSortOrder: sortBy === "active" ? sortOrder === 1 ? "ascend" : "descend" : null,
     },
     {
-      value: 'answerCount',
-      label: 'Кол-во ответов',
       dataIndex: 'answerCount',
       key: 'answerCount',
       title: 'Кол-во ответов',
@@ -153,8 +156,6 @@ export const Categories = () => {
       defaultSortOrder: sortBy === "answerCount" ? sortOrder === 1 ? "ascend" : "descend" : null,
     },
     {
-      value: 'questionCount',
-      label: 'Кол-во вопросов',
       dataIndex: 'questionCount',
       key: 'questionCount',
       title: 'Кол-во вопросов',
@@ -162,16 +163,10 @@ export const Categories = () => {
       defaultSortOrder: sortBy === "questionCount" ? sortOrder === 1 ? "ascend" : "descend" : null,
     },
     {
-      value: 'action',
-      label: 'Действия',
       dataIndex: 'action',
       title: 'Действия',
       key: 'action',
-      render: (_: any, row: CategoryType) => (<Space size="middle">
-          <NavLink to={row._id}>Редактировать</NavLink>
-          <a>Удалить</a>
-        </Space>
-      ),
+      render: (_: any, row: CategoryType) => <CategoryActions row={row} fetchData={fetchData}/>
     },
   ]
 
@@ -187,7 +182,7 @@ export const Categories = () => {
     pageSize={pageSize}
   />, [page, pageSize, total])
   const search = useMemo(() => <>
-    <div className="w-1/2 flex justify-center">
+    <div className="flex justify-center">
       <Form
         className="w-full"
         layout="vertical"
@@ -237,17 +232,17 @@ export const Categories = () => {
 
         {
           advancedSearch &&
-          columns.map(({value, label}) => {
-            return value === "code" ? (
-              <Row gutter={32} key={value}>
+          columns.map(({key, title}) => {
+            return key === "code" ? (
+              <Row gutter={32} key={key}>
                 <Col span={12}>
                   <Form.Item
-                    label={label}
-                    name={value}
+                    label={title as string}
+                    name={key}
                   >
                     <Input
                       // className="w-2/3"
-                      placeholder={`Введите ${label} категории для поиска`}
+                      placeholder={`Введите ${title} категории для поиска`}
                     />
                   </Form.Item>
                 </Col>
@@ -259,15 +254,28 @@ export const Categories = () => {
 
       </Form>
     </div>
-    <Switch defaultChecked={advancedSearch} onChange={toggleAdvancedSearch}/>
   </>, [advancedSearch, searchName, searchCode, activeFilter, advancedSearch])
+  const tableHeader = <div className="px-48 flex justify-between">
+    <div className="w-1/2">
+      {search}
+    </div>
+    <div className="flex flex-row items-center gap-2">
+      <h6 className="m-0 text-base font-semibold ">Расширенный поиск:</h6>
+      <Switch defaultChecked={advancedSearch} onChange={toggleAdvancedSearch}/>
+    </div>
+    <div className="flex flex-col justify-center">
+      <NavLink to="add">
+        <Button type="primary">
+          Добавить
+        </Button>
+      </NavLink>
+    </div>
+  </div>
 
   return (
     <>
       {contextHolder}
-      <div className="py-8 min-h-screen flex flex-col items-center bg-zinc-200 gap-8">
-        {search}
-
+      <div className="py-8 px-8 min-h-screen flex flex-col items-center bg-zinc-200 gap-8">
         <Table
           loading={loading}
           className="w-full px-32"
@@ -276,6 +284,7 @@ export const Categories = () => {
           pagination={false}
           footer={() => pagination}
           onChange={onSort}
+          title={() => tableHeader}
         />
       </div>
     </>
